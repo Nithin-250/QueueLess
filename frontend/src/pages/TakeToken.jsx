@@ -1,0 +1,238 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { apiTakeToken } from '../services/api.js';
+import { useAppConfig } from '../hooks/useAppConfig.js';
+import { useQueueState } from '../hooks/useQueueState.js';
+import { useQueues } from '../hooks/useQueues.js';
+
+function formatWait(seconds) {
+  if (!seconds || seconds <= 0) return null;
+  const m = Math.floor(seconds / 60);
+  if (m === 0) return `<1 min`;
+  if (m < 60) return `~${m} min`;
+  return `~${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+export default function TakeToken() {
+  const cfg = useAppConfig();
+  const { services } = useQueues();
+  const { state: queueState, tokens, announcement } = useQueueState();
+
+  const [service, setService] = useState(services[0]?.id || 'general');
+  const [registrationNumber, setRegistrationNumber] = useState(() => localStorage.getItem('vit.registrationNumber') || '');
+  const [email, setEmail] = useState('');
+  const [priority, setPriority] = useState(false);
+  const [groupSize, setGroupSize] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  // If the selected service becomes paused, auto-select the first available non-paused service
+  useEffect(() => {
+    const pausedServices = queueState?.pausedServices || [];
+    if (pausedServices.includes(service)) {
+      const fallback = services.find(s => !pausedServices.includes(s.id));
+      if (fallback) setService(fallback.id);
+    }
+  }, [queueState?.pausedServices, service]);
+
+  const effectivePriority = (priority || service === 'emergency') ? 'priority' : 'normal';
+
+  const tokenList = Object.values(tokens || {});
+  const isPaused = queueState?.status === 'paused';
+
+  const waitingByService = {};
+  services.forEach(s => {
+    waitingByService[s.id] = tokenList.filter(t => t.status === 'waiting' && t.service === s.id).length;
+  });
+  // Live average from the backend (observed waits), falling back to the
+  // org default — never a hardcoded constant.
+  const orgAvgSecs = cfg.avgServiceSeconds || 180;
+  const avgSecsFor = (svcId) =>
+    services.find(s => s.id === svcId)?.avgServiceSeconds || orgAvgSecs;
+
+  const handleTake = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const regNo = registrationNumber.trim().toUpperCase();
+      if (!regNo) { setError('Enter your VIT registration number before joining a queue.'); return; }
+      if (!/^[A-Z0-9-]{6,20}$/.test(regNo)) { setError('Enter a valid VIT registration number (letters and numbers only).'); return; }
+      localStorage.setItem('vit.registrationNumber', regNo);
+      const token = await apiTakeToken(service, email.trim() || null, effectivePriority, groupSize, regNo);
+      localStorage.setItem('queueless.myToken', JSON.stringify(token));
+      navigate(`/token/${token.id}`);
+    } catch (e) {
+      const status = e.response?.status;
+      if (status === 423) setError('The queue is currently paused. Please try again in a few minutes.');
+      else if (status === 429) setError('Too many requests. Please slow down and try again.');
+      else setError(e.response?.data?.error || 'Could not issue a token. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto px-6 py-16">
+      {announcement?.message && (
+        <div className="mb-8 p-4 border border-warn bg-warn/10 text-warn text-sm font-medium">
+          {announcement.message}
+        </div>
+      )}
+
+      <div className="label mb-4">Step 1 of 2</div>
+      <h1 className="font-display text-5xl sm:text-6xl tracking-tightest leading-[0.95]">
+        What brings you in today?
+      </h1>
+      <p className="mt-4 text-graphite max-w-xl">
+        Pick a service so the staff can prepare. You'll get your token number on the next screen.
+      </p>
+
+      {isPaused && (
+        <div className="mt-6 p-4 border border-warn bg-warn/5 text-warn text-sm">
+          The queue is currently paused. You can still select a service, but tokens cannot be issued until the queue resumes.
+        </div>
+      )}
+
+      <div className={`mt-10 grid gap-4 ${services.length <= 3 ? 'sm:grid-cols-3' : services.length === 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+        {services.map(s => {
+          const count = waitingByService[s.id] || 0;
+          const waitStr = formatWait(count * avgSecsFor(s.id));
+          const isSelected = service === s.id;
+          const isServicePaused = queueState?.pausedServices?.includes(s.id);
+          return (
+            <button
+              key={s.id}
+              onClick={() => !isServicePaused && setService(s.id)}
+              disabled={isServicePaused}
+              className={`text-left p-6 border transition-all ${
+                isServicePaused
+                  ? 'border-rule bg-cream opacity-50 cursor-not-allowed'
+                  : isSelected
+                    ? 'border-ink bg-ink text-paper'
+                    : 'border-rule bg-cream hover:border-ink'
+              }`}
+            >
+              <div className="label" style={isSelected && !isServicePaused ? { color: 'currentColor', opacity: 0.6 } : {}}>
+                {isServicePaused ? 'Paused' : isSelected ? 'Selected' : 'Service'}
+              </div>
+              <div className="mt-3 font-display text-xl leading-tight">{s.title}</div>
+              <div className={`mt-2 text-xs opacity-70 ${isSelected && !isServicePaused ? '' : 'text-graphite'}`}>
+                {s.desc}
+              </div>
+              {isServicePaused && (
+                <div className="mt-2 inline-flex items-center px-2 py-0.5 border border-warn/40 bg-warn/5 text-warn text-xs">
+                  Temporarily paused
+                </div>
+              )}
+              {!isServicePaused && (
+                <div className={`mt-3 pt-3 border-t flex items-center gap-2 text-xs ${isSelected ? 'border-paper/20' : 'border-rule'}`}>
+                  <span className={count === 0 ? (isSelected ? 'text-paper/60' : 'text-success') : (isSelected ? 'text-paper/70' : 'text-graphite')}>
+                    {count === 0 ? 'No wait' : `${count} waiting`}
+                  </span>
+                  {waitStr && count > 0 && (
+                    <span className={isSelected ? 'text-paper/50' : 'text-graphite/60'}>· {waitStr}</span>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-10 pt-10 border-t border-rule space-y-6">
+        {service !== 'emergency' && (
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={priority}
+              onChange={e => setPriority(e.target.checked)}
+              className="mt-0.5 w-4 h-4 border-rule accent-ink cursor-pointer"
+            />
+            <div>
+              <span className="text-sm font-medium text-ink">Request priority service</span>
+              <p className="text-xs text-graphite mt-0.5">
+                For elderly, disabled, pregnant, or medical urgency. Priority tokens are called before regular ones.
+              </p>
+            </div>
+          </label>
+        )}
+        {service === 'emergency' && (
+          <div className="p-3 border border-accent bg-accent/5 text-accent-deep text-sm">
+            Emergency is automatically flagged as priority and will be called before other tokens.
+          </div>
+        )}
+
+        {cfg.industry !== 'medical' && (
+          <div>
+            <span className="label">How many people are in your group?</span>
+            <div className="mt-3 flex gap-2">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setGroupSize(n)}
+                  className={`w-10 h-10 text-sm font-medium border transition-all ${
+                    groupSize === n
+                      ? 'bg-ink text-paper border-ink'
+                      : 'bg-cream text-ink border-rule hover:border-ink'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <label className="block">
+          <span className="label">VIT registration number (required)</span>
+          <p className="mt-1 text-xs text-graphite mb-3">
+            Enter your student registration number to associate your queue token with you.
+          </p>
+          <input
+            type="text"
+            value={registrationNumber}
+            onChange={e => setRegistrationNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))}
+            placeholder="e.g. 24BCE1234"
+            maxLength={20}
+            required
+            autoComplete="username"
+            className="w-full sm:max-w-sm border border-rule bg-cream px-4 py-3 text-sm text-ink placeholder:text-graphite/60 focus:outline-none focus:border-ink"
+          />
+          <p className="mt-2 text-xs text-graphite">Prototype note: this records the registration number locally; it does not verify identity yet.</p>
+        </label>
+
+        <label className="block">
+          <span className="label">Email (optional)</span>
+          <p className="mt-1 text-xs text-graphite mb-3">
+            Get your token number and tracking link sent to your inbox.
+          </p>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full sm:max-w-sm border border-rule bg-cream px-4 py-3 text-sm text-ink placeholder:text-graphite/60 focus:outline-none focus:border-ink"
+          />
+        </label>
+      </div>
+
+      <div className="mt-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+        <p className="text-sm text-graphite max-w-md">
+          By taking a token, you agree to wait roughly in the order shown.
+          Your position is saved on this device.
+        </p>
+        <button onClick={handleTake} disabled={submitting} className="btn-primary">
+          {submitting ? 'Issuing token…' : 'Issue my token →'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="mt-6 p-4 border border-accent bg-accent/5 text-accent-deep text-sm">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}

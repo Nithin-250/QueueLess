@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-feature-settings: 'cv11', 'ss01', 'tnum';
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(0,0,0,0.015) 1px, transparent 1px),
+      radial-gradient(circle at 65% 70%, rgba(0,0,0,0.015) 1px, transparent 1px);
+    background-size: 28px 28px, 36px 36px;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.015) 1px, transparent 1px),
+      radial-gradient(circle at 65% 70%, rgba(255,255,255,0.015) 1px, transparent 1px);
+  }
+
+  /* Dark mode semantic overrides — all warm greys shift to cool-dark */
+  .dark {
+    --tw-bg-opacity: 1;
+    color-scheme: dark;
+  }
+
+  /* Tabular numbers everywhere - critical for queue counters */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ── dark mode semantic remappings ─────────────────────────────────────── */
+.dark .bg-paper   { background-color: #1C1A18 !important; }
+.dark .bg-cream   { background-color: #252220 !important; }
+.dark .bg-ink     { background-color: #F0EBE3 !important; }
+.dark .text-ink   { color: #F0EBE3 !important; }
+.dark .text-graphite { color: #A09890 !important; }
+.dark .text-ash   { color: #5C5854 !important; }
+.dark .border-rule { border-color: #353028 !important; }
+.dark .divide-rule > * + * { border-color: #353028 !important; }
+.dark .bg-rule    { background-color: #353028 !important; }
+
+/* In dark mode bg-ink flips to cream (#F0EBE3) — ALL text on it must be dark.
+   This covers btn-primary, selected service cards, table headers, etc. */
+.dark .bg-ink {
+  color: #171615 !important;
+}
+/* Children with explicit text-paper (incl. opacity variants like text-paper/70)
+   would otherwise stay light on the flipped-light bg — force them dark too.
+   Fixes unreadable text in Smart Staffing, docked messaging bar, chat bubbles. */
+.dark .bg-ink [class*="text-paper"],
+.dark [class*="bg-ink"] [class*="text-paper"],
+.dark .bg-ink.text-paper {
+  color: rgba(23, 22, 21, 0.85) !important;
+}
+/* Light "chip" backgrounds (bg-paper/15) inside a flipped bg-ink card need a
+   dark tint to stay visible. */
+.dark .bg-ink [class*="bg-paper/"] {
+  background-color: rgba(23, 22, 21, 0.08) !important;
+}
+/* btn-primary hover switches to accent (dark red) — text should be light */
+.dark .btn-primary:hover {
+  color: #F0EBE3 !important;
+}
+/* btn-secondary hover: bg flips light so text must be dark */
+.dark .btn-secondary:hover {
+  color: #171615 !important;
+}
+
+/* dark body & html bg */
+.dark body, .dark html { background-color: #1C1A18; color: #F0EBE3; }
+
+@layer components {
+  .hairline {
+    @apply border border-rule;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-ink text-paper
+           font-medium tracking-tight rounded-none transition-all
+           hover:bg-accent hover:translate-y-[-1px] active:translate-y-0
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-ink disabled:hover:translate-y-0;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-transparent
+           text-ink font-medium tracking-tight border border-ink
+           transition-colors hover:bg-ink hover:text-paper;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-accent text-paper
+           font-medium tracking-tight transition-colors hover:bg-accent-deep;
+  }
+  .card {
+    @apply bg-cream hairline p-6;
+  }
+  .label {
+    @apply text-xs font-medium tracking-[0.18em] uppercase text-graphite;
+  }
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: A4 portrait;
+  }
+}
+
