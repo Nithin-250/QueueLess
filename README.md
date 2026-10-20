@@ -1,37 +1,3 @@
-<div align="center">
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/queueless-wordmark-dark.svg">
-  <img src="docs/images/queueless-wordmark-light.svg" alt="QueueLess logo" width="360">
-</picture>
-
-### A cloud-native smart token & queue management system
-
-![Version](https://img.shields.io/badge/version-1.6.0-blue)
-[![Container](https://img.shields.io/badge/GHCR-v1.6.0-2496ED?logo=docker&logoColor=white)](https://github.com/users/SufiyanAasim/packages/container/package/queueless)
-![Release](https://img.shields.io/badge/release-Cosmos%20%E2%80%94%20LAN%20Connectivity%20%26%20UI%20Polish-8A2BE2)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Frontend](https://img.shields.io/badge/frontend-React%2019%20%2B%20Vite-61DAFB)
-![Backend](https://img.shields.io/badge/backend-Node%2020%20%2B%20Express-339933)
-![Realtime](https://img.shields.io/badge/realtime-Firebase%20RTDB-FFCA28)
-![Tests](https://img.shields.io/badge/backend%20tests-48%20passing-brightgreen)
-![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
-
-Replaces paper tokens with a real-time browser experience — customers take a
-token from any device, track their live position, and get notified the moment
-their number is called. No app download, no accounts for customers.
-
-[Live Demo](https://queueless-beta.vercel.app) · [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Report a Bug](https://github.com/SufiyanAasim/queueless/issues/new/choose)
-
-</div>
-
----
-
-**Author:** Mohammad Sufiyan Aasim · [@SufiyanAasim](https://github.com/SufiyanAasim)<br>
-**Latest release:** v1.6.0 — Cosmos _(LAN Connectivity & UI Polish)_
-
-**Docs:** [Architecture](docs/Architecture.md) · [API](docs/API.md) · [Deployment](docs/Deployment.md) · [Development](docs/Development.md) · [Guides](docs/AdminGuide.md) · [Troubleshooting](docs/Troubleshooting.md) · [Release notes](docs/releases)  
-**Community:** [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Support](SUPPORT.md) · [Roadmap](ROADMAP.md) · [Release process](RELEASE.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
 
 QueueLess is a full-stack, cloud-native digital queue management system that replaces paper tokens with a real-time browser experience. Customers take tokens from any device, track their live position, and get notified the moment their number is called — no app download required.
 
